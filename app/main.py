@@ -7,8 +7,7 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain.chains import ConversationChain
-from langchain.memory import ConversationBufferMemory
+
 
 # Configuracion
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
