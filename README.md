@@ -1,20 +1,54 @@
-# LangChain + Ollama en Docker (Windows)
+# LangChain + Ollama en Docker
 
 Entorno completo para desarrollar con LangChain usando LLMs locales sin costes.
 
+## 🚀 Plataformas Soportadas
+
+- **Windows** (Docker Desktop con WSL2)
+- **Linux** (x86_64 y ARM64)
+- **macOS** (Intel y Apple Silicon)
+- **🥧 Raspberry Pi 5** (8GB RAM) - [Ver guía específica](RASPBERRY_PI_SETUP.md)
+
 ## Requisitos Previos
 
-- **Docker Desktop para Windows** (con WSL2)
-- **16 GB RAM** recomendado (8 GB minimo)
+### Windows / macOS / Linux (x86_64)
+- **Docker Desktop** o Docker Engine
+- **16 GB RAM** recomendado (8 GB mínimo)
 - **10 GB espacio en disco** para modelos
 
-## Inicio Rapido
+### Raspberry Pi 5
+- **8GB RAM** (recomendado)
+- **Docker** instalado
+- **32GB+ microSD** o SSD USB
+- Ver [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md) para guía completa
+
+## Inicio Rápido
+
+### 🥧 Para Raspberry Pi 5
+
+**Usa la configuración optimizada para ARM64:**
+
+```bash
+# Instalación automática (recomendado)
+chmod +x scripts/setup_rpi.sh
+./scripts/setup_rpi.sh
+
+# O manualmente:
+docker compose -f docker-compose.rpi.yml up -d
+docker exec ollama-server ollama pull gemma2:2b
+```
+
+📖 **Guía completa:** [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md)
+
+---
+
+### 💻 Para Windows / macOS / Linux
 
 ### 1. Iniciar Ollama
 
-```powershell
+```bash
 # Iniciar solo Ollama primero
-docker-compose up -d ollama
+docker compose up -d ollama
 
 # Verificar que esta corriendo
 docker logs ollama-server
@@ -22,8 +56,8 @@ docker logs ollama-server
 
 ### 2. Descargar Modelos
 
-```powershell
-# Modelo principal (3.2 GB)
+```bash
+# Modelo principal (4.7 GB)
 docker exec ollama-server ollama pull llama3.2
 
 # Modelo de embeddings para RAG (274 MB)
@@ -33,20 +67,20 @@ docker exec ollama-server ollama pull nomic-embed-text
 docker exec ollama-server ollama list
 ```
 
-### 3. Iniciar Aplicacion
+### 3. Iniciar Aplicación
 
-```powershell
+```bash
 # Iniciar todo
-docker-compose up -d
+docker compose up -d
 
 # Ver logs
-docker-compose logs -f langchain-app
+docker compose logs -f langchain-app
 ```
 
 ### 4. Ejecutar Ejemplos
 
-```powershell
-# Ejemplos basicos
+```bash
+# Ejemplos básicos
 docker exec -it langchain-app python main.py
 
 # Ejemplo RAG
@@ -84,20 +118,30 @@ curl -X POST http://localhost:8000/analyze \
 
 ## Modelos Disponibles
 
-| Modelo | Tamano | RAM Necesaria | Uso Recomendado |
+### Para PC / Laptop (16GB+ RAM)
+
+| Modelo | Tamaño | RAM Necesaria | Uso Recomendado |
 |--------|--------|---------------|-----------------|
-| `phi3:mini` | 2.3 GB | 8 GB | Tareas simples |
 | `llama3.2` | 4.7 GB | 16 GB | Uso general |
 | `mistral` | 4.1 GB | 16 GB | Buen balance |
 | `llama3.1:70b` | 40 GB | 64 GB | Alta calidad |
 
+### Para Raspberry Pi / 8GB RAM
+
+| Modelo | Tamaño | RAM Necesaria | Uso Recomendado |
+|--------|--------|---------------|-----------------|
+| `gemma2:2b` | 2.7 GB | 6 GB | ✅ Recomendado para RPI |
+| `phi3:mini` | 2.3 GB | 6 GB | Código y razonamiento |
+| `llama3.2:3b` | 2.0 GB | 5 GB | Tareas simples |
+| `tinyllama` | 600 MB | 3 GB | Ultra ligero |
+
 Para cambiar de modelo:
 
-```powershell
+```bash
 # Descargar nuevo modelo
 docker exec ollama-server ollama pull mistral
 
-# Configurar en docker-compose.yml o variable de entorno
+# Configurar en .env
 # MODEL_NAME=mistral
 ```
 
@@ -105,15 +149,21 @@ docker exec ollama-server ollama pull mistral
 
 ```
 langchain-local-llm/
-├── docker-compose.yml    # Configuracion de servicios
-├── Dockerfile            # Imagen de la app
-├── requirements.txt      # Dependencias Python
+├── docker-compose.yml        # Configuración para PC/Laptop
+├── docker-compose.rpi.yml    # 🥧 Configuración para Raspberry Pi
+├── Dockerfile                # Imagen multi-arquitectura
+├── requirements.txt          # Dependencias Python
+├── .env.example             # Variables de entorno (PC)
+├── .env.rpi                 # 🥧 Variables de entorno (RPI)
+├── RASPBERRY_PI_SETUP.md    # 🥧 Guía completa para RPI
 ├── app/
-│   ├── main.py          # Ejemplos basicos
-│   ├── rag_example.py   # Ejemplo RAG completo
-│   └── api_server.py    # API REST con FastAPI
+│   ├── main.py              # Ejemplos básicos
+│   ├── rag_example.py       # Ejemplo RAG completo
+│   ├── agent_example.py     # Agentes con herramientas
+│   └── api_server.py        # API REST con FastAPI
 └── scripts/
-    └── setup.ps1        # Script de configuracion
+    ├── setup.ps1            # Script Windows
+    └── setup_rpi.sh         # 🥧 Script para Raspberry Pi
 ```
 
 ## Uso con GPU (NVIDIA)

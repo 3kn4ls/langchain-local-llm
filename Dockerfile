@@ -1,4 +1,5 @@
 # Dockerfile para LangChain App
+# Compatible con x86_64 y ARM64 (Raspberry Pi)
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -6,13 +7,16 @@ WORKDIR /app
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements primero (cache de Docker)
 COPY requirements.txt .
 
 # Instalar dependencias Python
-RUN pip install --no-cache-dir -r requirements.txt
+# --no-cache-dir reduce tamaño de imagen
+# --timeout aumenta tiempo de espera (útil en RPI con conexión lenta)
+RUN pip install --no-cache-dir --timeout=300 -r requirements.txt
 
 # Copiar codigo de la aplicacion
 COPY app/ .
