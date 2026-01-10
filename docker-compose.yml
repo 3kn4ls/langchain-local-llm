@@ -42,6 +42,8 @@ services:
     volumes:
       # Montar codigo fuente para desarrollo
       - ./app:/app
+      # Persistir base de datos ChromaDB
+      - ./chroma_db:/app/chroma_db
     depends_on:
       ollama:
         condition: service_healthy

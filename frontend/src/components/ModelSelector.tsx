@@ -120,6 +120,19 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
                 rows={3}
               />
             </div>
+
+            <div className="flex items-center gap-3 pt-2 border-t border-gray-700">
+              <input
+                type="checkbox"
+                id="use_kb"
+                checked={settings.use_knowledge_base || false}
+                onChange={(e) => onSettingsChange({ ...settings, use_knowledge_base: e.target.checked })}
+                className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+              />
+              <label htmlFor="use_kb" className="text-sm text-gray-300">
+                Usar Base de Conocimiento (RAG)
+              </label>
+            </div>
           </div>
 
           <button

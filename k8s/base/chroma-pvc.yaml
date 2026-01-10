@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chroma-db-pvc
+  namespace: llm-services
+  labels:
+    app: langchain-api
+    app.kubernetes.io/part-of: langchain-ollama
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi  # Espacio suficiente para embeddings
+  storageClassName: local-path

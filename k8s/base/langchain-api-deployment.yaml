@@ -109,9 +109,17 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
+          timeoutSeconds: 3
           failureThreshold: 12  # 60 segundos total
 
-      # Política de reinicio
+        volumeMounts:
+        - name: chroma-data
+          mountPath: /app/chroma_db
+
+      volumes:
+      - name: chroma-data
+        persistentVolumeClaim:
+          claimName: chroma-db-pvc
       restartPolicy: Always
 
       # Tiempo de gracia para procesar peticiones en curso

@@ -19,6 +19,7 @@ export interface ChatRequest {
   temperature?: number;
   max_tokens?: number;
   system_prompt?: string;
+  use_knowledge_base?: boolean;
 }
 
 export interface ChatResponse {
@@ -37,4 +38,5 @@ export interface ChatSettings {
   temperature: number;
   max_tokens: number;
   system_prompt: string;
+  use_knowledge_base: boolean;
 }

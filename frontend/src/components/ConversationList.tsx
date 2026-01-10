@@ -1,5 +1,6 @@
 
 import { Conversation } from '../types';
+import { FileUploader } from './FileUploader';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -34,11 +35,10 @@ export const ConversationList = ({
         {conversations.map((conv) => (
           <div
             key={conv.id}
-            className={`group relative p-3 mb-2 rounded-lg cursor-pointer transition-colors ${
-              currentConversationId === conv.id
-                ? 'bg-gray-700'
-                : 'hover:bg-gray-800'
-            }`}
+            className={`group relative p-3 mb-2 rounded-lg cursor-pointer transition-colors ${currentConversationId === conv.id
+              ? 'bg-gray-700'
+              : 'hover:bg-gray-800'
+              }`}
             onClick={() => onSelectConversation(conv.id)}
           >
             <div className="text-white text-sm truncate pr-8">{conv.title}</div>
@@ -59,6 +59,10 @@ export const ConversationList = ({
             </button>
           </div>
         ))}
+      </div>
+
+      <div className="p-4 border-t border-gray-700">
+        <FileUploader />
       </div>
 
       <div className="p-4 border-t border-gray-700 text-xs text-gray-400">

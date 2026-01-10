@@ -1,48 +1,23 @@
-"""
-API REST con FastAPI para LangChain + Ollama
-Expone endpoints para chat con soporte de streaming SSE
-"""
-import os
-import asyncio
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
-from langchain_ollama import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_core.output_parsers import StrOutputParser
+import shutil
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from rag_service import RAGService
+
+# ... imports ...
 
 # Configuracion
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-MODEL_NAME = os.getenv("MODEL_NAME", "llama3.2")
-PORT = int(os.getenv("PORT", "8000"))
-MAX_INPUT_LENGTH = int(os.getenv("MAX_INPUT_LENGTH", "10000"))
+# ... existing config ...
+UPLOAD_DIR = "./uploaded_files"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-app = FastAPI(
-    title="ChatGPT Local - Ollama API",
-    description="API local estilo ChatGPT usando Ollama",
-    version="1.0.0"
+# ... (API initialization) ...
+
+# Inicializar RAG Service
+rag_service = RAGService(
+    ollama_base_url=OLLAMA_BASE_URL,
+    model_name=MODEL_NAME
 )
 
-# CORS para desarrollo
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# =============================================================================
-# Modelos Pydantic
-# =============================================================================
-class ChatMessage(BaseModel):
-    role: str = Field(..., description="Role: user, assistant, or system")
-    content: str = Field(..., description="Message content")
-
+# ... (Models) ...
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage] = Field(..., description="Conversation messages")
@@ -50,92 +25,91 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0, description="Temperature")
     max_tokens: Optional[int] = Field(default=2048, ge=1, le=4096, description="Max tokens")
     system_prompt: Optional[str] = Field(default="Eres un asistente útil.", description="System prompt")
+    use_knowledge_base: Optional[bool] = Field(default=False, description="Use RAG context")
 
 
-class ChatResponse(BaseModel):
-    response: str
-    model: str
-
-
-class AnalysisRequest(BaseModel):
-    text: str
-    task: str  # "summarize", "sentiment", "extract_keywords"
-    model: Optional[str] = MODEL_NAME
-
-
-# =============================================================================
-# Endpoints
-# =============================================================================
-@app.get("/")
-async def root():
-    """Health check."""
-    return {
-        "status": "ok",
-        "service": "LangChain + Ollama API",
-        "ollama_url": OLLAMA_BASE_URL,
-        "default_model": MODEL_NAME
-    }
-
-
-@app.get("/models")
-async def list_models():
-    """Listar modelos disponibles en Ollama."""
-    import httpx
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
-            return response.json()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Ollama no disponible: {e}")
-
+# ... (Existing endpoints) ...
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Endpoint de chat simple sin streaming."""
-    # Validar longitud de mensajes
+    """Endpoint de chat con soporte RAG opcional."""
+    # Validar longitud
     for msg in request.messages:
         if len(msg.content) > MAX_INPUT_LENGTH:
             raise HTTPException(status_code=400, detail="Message too long")
 
     try:
-        llm = ChatOllama(
-            model=request.model,
-            base_url=OLLAMA_BASE_URL,
-            temperature=request.temperature,
-            num_predict=request.max_tokens,
-        )
+        if request.use_knowledge_base:
+            # RAG Flow
+            last_message = request.messages[-1]
+            if last_message.role != "user":
+                 raise HTTPException(status_code=400, detail="Last message must be from user for RAG")
+            
+            response_text = rag_service.ask(last_message.content)
+            return ChatResponse(response=response_text, model=request.model)
+        
+        else:
+            # Standard Flow
+            llm = ChatOllama(
+                model=request.model,
+                base_url=OLLAMA_BASE_URL,
+                temperature=request.temperature,
+                num_predict=request.max_tokens,
+            )
 
-        # Construir mensajes en formato LangChain usando objetos Message directamente
-        # para evitar problemas con caracteres especiales en plantillas
-        from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+            # ... (Existing message construction logic) ...
+            from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-        langchain_messages = []
+            langchain_messages = []
 
-        # Agregar system prompt si existe y no está en los mensajes
-        has_system = any(msg.role == "system" for msg in request.messages)
-        if not has_system and request.system_prompt:
-            langchain_messages.append(SystemMessage(content=request.system_prompt))
+            # Agregar system prompt si existe y no está en los mensajes
+            has_system = any(msg.role == "system" for msg in request.messages)
+            if not has_system and request.system_prompt:
+                langchain_messages.append(SystemMessage(content=request.system_prompt))
 
-        # Agregar resto de mensajes
-        for msg in request.messages:
-            if msg.role == "user":
-                langchain_messages.append(HumanMessage(content=msg.content))
-            elif msg.role == "assistant":
-                langchain_messages.append(AIMessage(content=msg.content))
-            elif msg.role == "system":
-                langchain_messages.append(SystemMessage(content=msg.content))
+            # Agregar resto de mensajes
+            for msg in request.messages:
+                if msg.role == "user":
+                    langchain_messages.append(HumanMessage(content=msg.content))
+                elif msg.role == "assistant":
+                    langchain_messages.append(AIMessage(content=msg.content))
+                elif msg.role == "system":
+                    langchain_messages.append(SystemMessage(content=msg.content))
 
-        # Invocar directamente sin usar plantillas que puedan malinterpretar caracteres especiales
-        chain = llm | StrOutputParser()
-        response = chain.invoke(langchain_messages)
+            chain = llm | StrOutputParser()
+            response = chain.invoke(langchain_messages)
 
-        return ChatResponse(response=response, model=request.model)
+            return ChatResponse(response=response, model=request.model)
 
     except Exception as e:
         import traceback
         print(f"Error in chat endpoint: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+
+
+@app.post("/ingest")
+async def ingest_document(file: UploadFile = File(...)):
+    """Upload and ingest a document into the Knowledge Base."""
+    try:
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        num_chunks = rag_service.ingest_file(file_path)
+        
+        return {
+            "filename": file.filename,
+            "status": "success", 
+            "chunks_added": num_chunks,
+            "message": f"Successfully ingested {file.filename}"
+        }
+    except Exception as e:
+        import traceback
+        print(f"Error ingesting file: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+
 
 
 @app.post("/chat/stream")

@@ -57,6 +57,11 @@ print_info "3/9 Creando PersistentVolumeClaim..."
 kubectl apply -f pvc.yaml
 print_success "PVC creado"
 
+# 3.5. Chroma PVC
+print_info "3.5/9 Creando ChromaDB PVC..."
+kubectl apply -f chroma-pvc.yaml
+print_success "ChromaDB PVC creado"
+
 # Esperar a que PVC esté bound
 print_info "Esperando a que PVC esté bound..."
 kubectl wait --for=jsonpath='{.status.phase}'=Bound \

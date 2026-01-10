@@ -35,6 +35,7 @@ export const useChat = (settings: ChatSettings) => {
           temperature: settings.temperature,
           max_tokens: settings.max_tokens,
           system_prompt: settings.system_prompt,
+          use_knowledge_base: settings.use_knowledge_base,
         });
 
         for await (const chunk of stream) {
@@ -56,6 +57,7 @@ export const useChat = (settings: ChatSettings) => {
           temperature: settings.temperature,
           max_tokens: settings.max_tokens,
           system_prompt: settings.system_prompt,
+          use_knowledge_base: settings.use_knowledge_base,
         });
 
         const assistantMessage: Message = {
