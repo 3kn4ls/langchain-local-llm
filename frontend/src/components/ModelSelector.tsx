@@ -23,7 +23,7 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
       setModels(modelList);
     } catch (error) {
       console.error('Error loading models:', error);
-      setModels([{ name: 'llama3.2' }, { name: 'mistral' }, { name: 'phi3:mini' }]);
+      setModels([{ name: 'gemma2:2b' }, { name: 'llama3.2' }, { name: 'mistral' }, { name: 'phi3:mini' }]);
     } finally {
       setLoading(false);
     }
