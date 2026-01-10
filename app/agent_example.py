@@ -8,6 +8,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.agents import create_tool_calling_agent, AgentExecutor
+from app.tools_mongo import mongo_list_collections, mongo_find, mongo_insert
 
 # Configuracion
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -127,7 +128,10 @@ def crear_agente():
         calcular,
         obtener_fecha_hora,
         buscar_en_base_conocimiento,
-        convertir_unidades
+        convertir_unidades,
+        mongo_list_collections,
+        mongo_find,
+        mongo_insert
     ]
 
     # Prompt del agente
@@ -140,7 +144,10 @@ Herramientas disponibles:
 - calcular: Para operaciones matematicas
 - obtener_fecha_hora: Para saber fecha/hora actual
 - buscar_en_base_conocimiento: Para info de productos, precios, horarios
-- convertir_unidades: Para conversiones de unidades"""),
+- convertir_unidades: Para conversiones de unidades
+- mongo_list_collections: Ver colecciones en la base de datos
+- mongo_find: Buscar documentos en la base de datos
+- mongo_insert: Insertar documentos (recordatorios, notas, etc)"""),
         ("placeholder", "{chat_history}"),
         ("human", "{input}"),
         ("placeholder", "{agent_scratchpad}")
@@ -175,7 +182,9 @@ def main():
             "Cuanto es 15% de 250?",
             "Cuales son los precios de los planes?",
             "Convierte 100 km a millas",
-            "Si tengo 3 productos de 45.50 USD cada uno, cuanto pago en total con 10% de descuento?"
+            "Si tengo 3 productos de 45.50 USD cada uno, cuanto pago en total con 10% de descuento?",
+            "Guarda un recordatorio: 'Comprar leche y pan' en la coleccion 'recordatorios'",
+            "Muestrame los recordatorios que tengo guardados"
         ]
 
         for pregunta in preguntas:

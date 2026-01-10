@@ -88,28 +88,66 @@ async def list_models():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Endpoint de chat simple."""
+    """Endpoint de chat con soporte para herramientas (Agent LangGraph)."""
     try:
+        from langgraph.prebuilt import create_react_agent
+        try:
+            from app.tools_basic import calcular, obtener_fecha_hora, buscar_en_base_conocimiento, convertir_unidades
+            from app.tools_mongo import mongo_list_collections, mongo_find, mongo_insert
+        except ImportError:
+            from tools_basic import calcular, obtener_fecha_hora, buscar_en_base_conocimiento, convertir_unidades
+            from tools_mongo import mongo_list_collections, mongo_find, mongo_insert
+
+        # 1. Configurar Herramientas
+        tools = [
+            calcular,
+            obtener_fecha_hora,
+            buscar_en_base_conocimiento,
+            convertir_unidades,
+            mongo_list_collections,
+            mongo_find,
+            mongo_insert
+        ]
+
+        # 2. Configurar LLM
         llm = ChatOllama(
             model=request.model,
             base_url=OLLAMA_BASE_URL,
             temperature=request.temperature,
         )
 
-        # Construir historial
-        messages = [("system", request.system_prompt)]
+        # 3. Crear Prompt del Sistema
+        system_msg = request.system_prompt
+        if "mongo" not in system_msg.lower():
+             system_msg += "\n\nHerramientas disponibles:\n- mongo_list_collections: Ver colecciones\n- mongo_find: Buscar datos\n- mongo_insert: Guardar datos"
+             
+        # 4. Crear Agente (LangGraph)
+        # prompt acepta el prompt del sistema en esta version
+        agent = create_react_agent(llm, tools, prompt=system_msg)
+
+        # 5. Construir historial
+        messages = []
         for msg in request.history:
-            messages.append((msg.role, msg.content))
-        messages.append(("human", request.message))
+             if msg.role == "user":
+                 messages.append(HumanMessage(content=msg.content))
+             elif msg.role == "assistant":
+                 messages.append(AIMessage(content=msg.content))
+        
+        messages.append(HumanMessage(content=request.message))
 
-        prompt = ChatPromptTemplate.from_messages(messages)
-        chain = prompt | llm | StrOutputParser()
+        # 6. Ejecutar
+        result = agent.invoke({"messages": messages})
+        
+        # Obtener ultimo mensaje (AI Message)
+        last_message = result["messages"][-1]
+        response_text = last_message.content
 
-        response = chain.invoke({})
-
-        return ChatResponse(response=response, model=request.model)
+        return ChatResponse(response=response_text, model=request.model)
 
     except Exception as e:
+        print(f"Error en endpoint /chat: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
