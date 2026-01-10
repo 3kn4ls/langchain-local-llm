@@ -1,33 +1,54 @@
-# ChatGPT Local con Ollama
+# LangChain + Ollama en Docker
 
-Aplicación web completa estilo ChatGPT usando Ollama como backend LLM. Stack completo: React + TypeScript + FastAPI + Docker.
+Entorno completo para desarrollar con LangChain usando LLMs locales sin costes.
 
-## Características
+## 🚀 Plataformas Soportadas
 
-- **Frontend Moderno**: React + TypeScript + Vite + Tailwind CSS
-- **UI tipo ChatGPT**: Chat en tiempo real con streaming de respuestas
-- **Backend FastAPI**: API REST con endpoints para chat y modelos
-- **Streaming en tiempo real**: Respuestas token por token
-- **Gestión de conversaciones**: Guardar, cargar y exportar conversaciones
-- **Configuración de modelos**: Cambiar modelo, temperature y max tokens
-- **Renderizado de Markdown**: Soporte completo con resaltado de sintaxis
-- **100% Local**: Sin enviar datos a servicios externos
-- **Docker**: Todo se ejecuta en contenedores
+- **Windows** (Docker Desktop con WSL2)
+- **Linux** (x86_64 y ARM64)
+- **macOS** (Intel y Apple Silicon)
+- **🥧 Raspberry Pi 5** (8GB RAM) - [Ver guía específica](RASPBERRY_PI_SETUP.md)
 
 ## Requisitos Previos
 
-- **Docker Desktop para Windows** (con WSL2)
-- **16 GB RAM** recomendado (8 GB minimo)
+### Windows / macOS / Linux (x86_64)
+- **Docker Desktop** o Docker Engine
+- **16 GB RAM** recomendado (8 GB mínimo)
 - **10 GB espacio en disco** para modelos
+
+### Raspberry Pi 5
+- **8GB RAM** (recomendado)
+- **Docker** instalado
+- **32GB+ microSD** o SSD USB
+- Ver [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md) para guía completa
 
 ## Inicio Rápido
 
+### 🥧 Para Raspberry Pi 5
+
+**Usa la configuración optimizada para ARM64:**
+
+```bash
+# Instalación automática (recomendado)
+chmod +x scripts/setup_rpi.sh
+./scripts/setup_rpi.sh
+
+# O manualmente:
+docker compose -f docker-compose.rpi.yml up -d
+docker exec ollama-server ollama pull gemma2:2b
+```
+
+📖 **Guía completa:** [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md)
+
+---
+
+### 💻 Para Windows / macOS / Linux
+
 ### 1. Clonar y levantar servicios
 
-```powershell
-# Clonar el repositorio (si no lo has hecho)
-git clone <tu-repo>
-cd langchain-local-llm
+```bash
+# Iniciar solo Ollama primero
+docker compose up -d ollama
 
 # Levantar todos los servicios
 docker-compose up -d
@@ -35,8 +56,8 @@ docker-compose up -d
 
 ### 2. Descargar modelos
 
-```powershell
-# Modelo principal (2GB - rápido y eficiente)
+```bash
+# Modelo principal (4.7 GB)
 docker exec ollama-server ollama pull llama3.2
 
 # Modelos alternativos (opcional)
@@ -47,60 +68,29 @@ docker exec ollama-server ollama pull phi3:mini
 docker exec ollama-server ollama list
 ```
 
-### 3. Acceder a la aplicación
+### 3. Iniciar Aplicación
 
-Abre tu navegador en:
+```bash
+# Iniciar todo
+docker compose up -d
 
-```
-http://localhost:3000
+# Ver logs
+docker compose logs -f langchain-app
 ```
 
 La interfaz web estará lista para usar. El backend API está en `http://localhost:8000`.
 
 ### 4. Ver logs
 
-```powershell
-# Ver logs de todos los servicios
-docker-compose logs -f
+```bash
+# Ejemplos básicos
+docker exec -it langchain-app python main.py
 
-# Ver logs de un servicio específico
-docker-compose logs -f web          # Frontend
-docker-compose logs -f langchain-app  # Backend
-docker-compose logs -f ollama        # Ollama
-```
+# Ejemplo RAG
+docker exec -it langchain-app python rag_example.py
 
-## Arquitectura
-
-```
-┌─────────────────────────────────────────────────┐
-│                   Usuario                        │
-└───────────────────┬─────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────────────┐
-│  Frontend (React + Vite)                        │
-│  Puerto: 3000                                   │
-│  - UI tipo ChatGPT                              │
-│  - Streaming SSE                                │
-│  - Gestión de conversaciones                    │
-└───────────────────┬─────────────────────────────┘
-                    │ HTTP/API
-                    ▼
-┌─────────────────────────────────────────────────┐
-│  Backend (FastAPI)                              │
-│  Puerto: 8000                                   │
-│  - /models (GET)                                │
-│  - /chat (POST)                                 │
-│  - /chat/stream (POST)                          │
-└───────────────────┬─────────────────────────────┘
-                    │ LangChain
-                    ▼
-┌─────────────────────────────────────────────────┐
-│  Ollama Server                                  │
-│  Puerto: 11434                                  │
-│  - Modelos LLM locales                          │
-│  - GPU/CPU support                              │
-└─────────────────────────────────────────────────┘
+# Iniciar API REST
+docker exec -it langchain-app python api_server.py
 ```
 
 ## Endpoints de la API
@@ -146,119 +136,54 @@ curl -X POST http://localhost:8000/chat/stream \
   }'
 ```
 
-## Configuración
+## Modelos Disponibles
 
-### Variables de Entorno
+### Para PC / Laptop (16GB+ RAM)
 
-Puedes configurar el backend editando `docker-compose.yml`:
+| Modelo | Tamaño | RAM Necesaria | Uso Recomendado |
+|--------|--------|---------------|-----------------|
+| `llama3.2` | 4.7 GB | 16 GB | Uso general |
+| `mistral` | 4.1 GB | 16 GB | Buen balance |
+| `llama3.1:70b` | 40 GB | 64 GB | Alta calidad |
 
-```yaml
-environment:
-  - OLLAMA_BASE_URL=http://ollama:11434
-  - MODEL_NAME=llama3.2
-  - PORT=8000
-  - MAX_INPUT_LENGTH=10000
+### Para Raspberry Pi / 8GB RAM
+
+| Modelo | Tamaño | RAM Necesaria | Uso Recomendado |
+|--------|--------|---------------|-----------------|
+| `gemma2:2b` | 2.7 GB | 6 GB | ✅ Recomendado para RPI |
+| `phi3:mini` | 2.3 GB | 6 GB | Código y razonamiento |
+| `llama3.2:3b` | 2.0 GB | 5 GB | Tareas simples |
+| `tinyllama` | 600 MB | 3 GB | Ultra ligero |
+
+Para cambiar de modelo:
+
+```bash
+# Descargar nuevo modelo
+docker exec ollama-server ollama pull mistral
+
+# Configurar en .env
+# MODEL_NAME=mistral
 ```
-
-### Cambiar modelo por defecto
-
-```yaml
-# En docker-compose.yml
-environment:
-  - MODEL_NAME=mistral  # Cambiar aquí
-```
-
-## Modelos Recomendados
-
-| Modelo | Tamaño | RAM | Uso |
-|--------|--------|-----|-----|
-| `phi3:mini` | 2.3 GB | 8 GB | Tareas simples, desarrollo |
-| `llama3.2` | 2 GB | 8 GB | Uso general, rápido |
-| `mistral` | 4.1 GB | 16 GB | Balance calidad/velocidad |
-| `llama3.1:8b` | 4.7 GB | 16 GB | Alta calidad |
-| `llama3.1:70b` | 40 GB | 64 GB | Máxima calidad (requiere GPU) |
 
 ## Estructura del Proyecto
 
 ```
 langchain-local-llm/
-├── frontend/                  # Frontend React
-│   ├── src/
-│   │   ├── components/       # Componentes React
-│   │   │   ├── ChatWindow.tsx
-│   │   │   ├── MessageList.tsx
-│   │   │   ├── MessageInput.tsx
-│   │   │   ├── MessageItem.tsx
-│   │   │   ├── ModelSelector.tsx
-│   │   │   └── ConversationList.tsx
-│   │   ├── hooks/           # Custom hooks
-│   │   │   └── useChat.ts
-│   │   ├── types/           # TypeScript types
-│   │   │   └── index.ts
-│   │   ├── utils/           # Utilidades
-│   │   │   ├── api.ts
-│   │   │   └── storage.ts
-│   │   ├── styles/          # Estilos
-│   │   │   └── index.css
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   ├── package.json
-│   └── vite.config.ts
-├── app/                      # Backend Python
-│   ├── api_server.py        # API FastAPI principal
-│   ├── main.py              # Ejemplos
-│   ├── rag_example.py
-│   └── tests/               # Tests
-│       └── test_api.py
-├── docker-compose.yml        # Orquestación de servicios
-├── Dockerfile               # Backend container
-├── requirements.txt         # Dependencias Python
-└── README.md
-```
-
-## Desarrollo Local
-
-### Frontend (sin Docker)
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Accede en `http://localhost:5173`
-
-### Backend (sin Docker)
-
-```powershell
-# Instalar Ollama: https://ollama.ai
-# Descargar modelo
-ollama pull llama3.2
-
-# Crear entorno virtual
-python -m venv venv
-.\venv\Scripts\Activate  # Windows
-source venv/bin/activate  # Linux/Mac
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Ejecutar servidor
-cd app
-python api_server.py
-```
-
-### Ejecutar tests
-
-```powershell
-# En el contenedor
-docker exec langchain-app pytest tests/ -v
-
-# Local
-cd app
-pytest tests/ -v
+├── docker-compose.yml        # Configuración para PC/Laptop
+├── docker-compose.rpi.yml    # 🥧 Configuración para Raspberry Pi
+├── Dockerfile                # Imagen multi-arquitectura
+├── requirements.txt          # Dependencias Python
+├── .env.example             # Variables de entorno (PC)
+├── .env.rpi                 # 🥧 Variables de entorno (RPI)
+├── RASPBERRY_PI_SETUP.md    # 🥧 Guía completa para RPI
+├── app/
+│   ├── main.py              # Ejemplos básicos
+│   ├── rag_example.py       # Ejemplo RAG completo
+│   ├── agent_example.py     # Agentes con herramientas
+│   └── api_server.py        # API REST con FastAPI
+└── scripts/
+    ├── setup.ps1            # Script Windows
+    └── setup_rpi.sh         # 🥧 Script para Raspberry Pi
 ```
 
 ## Uso con GPU NVIDIA
