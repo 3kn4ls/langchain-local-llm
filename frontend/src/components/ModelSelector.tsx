@@ -20,6 +20,9 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
     setLoading(true);
     try {
       const modelList = await api.getModels();
+      console.log('DEBUG - ModelSelector received models:', modelList);
+      console.log('DEBUG - Number of models:', modelList.length);
+      console.log('DEBUG - First model:', modelList[0]);
       setModels(modelList);
     } catch (error) {
       console.error('Error loading models:', error);
