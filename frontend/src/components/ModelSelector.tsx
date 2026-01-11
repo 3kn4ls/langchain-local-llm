@@ -10,7 +10,8 @@ interface ModelSelectorProps {
 export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [loading, setLoading] = useState(false);
+  /* Removed unused loading state to fix build error */
+  // const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
   }, []);
 
   const loadModels = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const modelList = await api.getModels();
       const validModels = modelList.filter(model => model.name && model.name.trim());
@@ -40,7 +41,7 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
       console.error('Error loading models:', error);
       setModels([{ name: 'gemma2:2b' }, { name: 'llama3.2' }, { name: 'mistral' }]);
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 
