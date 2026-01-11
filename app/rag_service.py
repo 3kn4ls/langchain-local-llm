@@ -127,7 +127,7 @@ class RAGService:
             # but modifying internal state might require re-instantiation.
             # Safe approach: usage of delete_collection() clears data.
 
-    def ask(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3) -> str:
+    async def ask(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3) -> str:
         """Asks a question using the RAG chain."""
         # Use provided model or fallback to default
         target_model = model_name or self.model_name
@@ -161,9 +161,9 @@ Respuesta:"""
             | StrOutputParser()
         )
         
-        return chain.invoke(question)
+        return await chain.ainvoke(question)
 
-    def ask_stream(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3):
+    async def ask_stream(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3):
         """Asks a question using the RAG chain and streams the response."""
         # Use provided model or fallback to default
         target_model = model_name or self.model_name
@@ -197,7 +197,8 @@ Respuesta:"""
             | StrOutputParser()
         )
         
-        return chain.stream(question)
+        async for chunk in chain.astream(question):
+            yield chunk
 
     def get_related_docs(self, query: str, k: int = 3) -> List[Document]:
         """Returns documents similar to the query."""

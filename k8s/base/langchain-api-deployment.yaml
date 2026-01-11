@@ -74,13 +74,23 @@ spec:
             configMapKeyRef:
               name: langchain-config
               key: PYTHONUNBUFFERED
+        - name: ANONYMIZED_TELEMETRY
+          valueFrom:
+            configMapKeyRef:
+              name: langchain-config
+              key: ANONYMIZED_TELEMETRY
+        - name: CHROMA_SERVER_NO_INTERACTIVE_AUTH
+          valueFrom:
+            configMapKeyRef:
+              name: langchain-config
+              key: CHROMA_SERVER_NO_INTERACTIVE_AUTH
 
         resources:
           limits:
-            memory: "512Mi"  # Límite por réplica
-            cpu: "500m"
+            memory: "2048Mi"  # Aumentado a 2GB por crashes en RAG
+            cpu: "1000m"
           requests:
-            memory: "256Mi"  # RAM mínima por réplica
+            memory: "1024Mi"
             cpu: "100m"
 
         # Health checks - coinciden con los endpoints del api_server.py
@@ -88,7 +98,7 @@ spec:
           httpGet:
             path: /
             port: 8000
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60  # Más tiempo de margen al inicio
           periodSeconds: 30
           timeoutSeconds: 10
           failureThreshold: 3

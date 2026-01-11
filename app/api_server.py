@@ -151,7 +151,7 @@ async def chat(request: ChatRequest):
             if last_message.role != "user":
                  raise HTTPException(status_code=400, detail="Last message must be from user for RAG")
             
-            response_text = rag_service.ask(
+            response_text = await rag_service.ask(
                 question=last_message.content,
                 model_name=request.model,
                 temperature=request.temperature
@@ -187,7 +187,7 @@ async def chat(request: ChatRequest):
                     langchain_messages.append(SystemMessage(content=msg.content))
 
             chain = llm | StrOutputParser()
-            response = chain.invoke(langchain_messages)
+            response = await chain.ainvoke(langchain_messages)
 
             return ChatResponse(response=response, model=request.model)
 
@@ -240,7 +240,7 @@ async def chat_stream(request: ChatRequest):
                     return
 
                 # Streaming de RAG
-                for chunk in rag_service.ask_stream(
+                async for chunk in rag_service.ask_stream(
                     question=last_message.content,
                     model_name=request.model,
                     temperature=request.temperature
@@ -275,7 +275,7 @@ async def chat_stream(request: ChatRequest):
                         langchain_messages.append(SystemMessage(content=msg.content))
 
                 # Stream de chunks directamente sin plantillas
-                for chunk in llm.stream(langchain_messages):
+                async for chunk in llm.astream(langchain_messages):
                     if hasattr(chunk, 'content'):
                         yield chunk.content
                 await asyncio.sleep(0)  # Permitir que otros procesos se ejecuten
@@ -320,7 +320,7 @@ Texto: {text}"""
         prompt = ChatPromptTemplate.from_template(tasks[request.task])
         chain = prompt | llm | StrOutputParser()
 
-        result = chain.invoke({"text": request.text})
+        result = await chain.ainvoke({"text": request.text})
 
         return {
             "task": request.task,
