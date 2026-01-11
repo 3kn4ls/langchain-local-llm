@@ -139,7 +139,11 @@ async def chat(request: ChatRequest):
             if last_message.role != "user":
                  raise HTTPException(status_code=400, detail="Last message must be from user for RAG")
             
-            response_text = rag_service.ask(last_message.content)
+            response_text = rag_service.ask(
+                question=last_message.content,
+                model_name=request.model,
+                temperature=request.temperature
+            )
             return ChatResponse(response=response_text, model=request.model)
         
         else:
@@ -224,7 +228,11 @@ async def chat_stream(request: ChatRequest):
                     return
 
                 # Streaming de RAG
-                for chunk in rag_service.ask_stream(last_message.content):
+                for chunk in rag_service.ask_stream(
+                    question=last_message.content,
+                    model_name=request.model,
+                    temperature=request.temperature
+                ):
                     yield chunk
             
             else:
@@ -311,6 +319,18 @@ Texto: {text}"""
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/debug/rag")
+async def debug_rag(query: str):
+    """Endpoint de debug para verificar retrieval."""
+    try:
+        docs = rag_service.get_related_docs(query)
+        return {
+            "query": query,
+            "count": len(docs),
+            "documents": [{"content": d.page_content, "metadata": d.metadata} for d in docs]
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 # =============================================================================
 # Main

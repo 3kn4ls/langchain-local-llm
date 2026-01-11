@@ -106,14 +106,26 @@ class RAGService:
             # but modifying internal state might require re-instantiation.
             # Safe approach: usage of delete_collection() clears data.
 
-    def ask(self, question: str) -> str:
+    def ask(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3) -> str:
         """Asks a question using the RAG chain."""
-        template = """Responde la pregunta basandote SOLO en el siguiente contexto:
+        # Use provided model or fallback to default
+        target_model = model_name or self.model_name
+        
+        # Create a specific LLM instance for this request
+        llm = ChatOllama(
+            model=target_model,
+            base_url=self.ollama_base_url,
+            temperature=temperature,
+        )
+
+        template = """Usa el siguiente contexto para responder a la pregunta del usuario.
+Si la respuesta no se encuentra en el contexto, di que no tienes esa información. No inventes nada.
+Mantén la respuesta concisa y profesional.
+
+Contexto:
 {context}
 
 Pregunta: {question}
-
-Si no encuentras la respuesta en el contexto, di "No tengo informacion suficiente en mi base de conocimiento para responder eso."
 Respuesta:"""
         
         prompt = ChatPromptTemplate.from_template(template)
@@ -124,20 +136,32 @@ Respuesta:"""
         chain = (
             {"context": self.retriever | format_docs, "question": RunnablePassthrough()}
             | prompt
-            | self.llm
+            | llm
             | StrOutputParser()
         )
         
         return chain.invoke(question)
 
-    def ask_stream(self, question: str):
+    def ask_stream(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3):
         """Asks a question using the RAG chain and streams the response."""
-        template = """Responde la pregunta basandote SOLO en el siguiente contexto:
+        # Use provided model or fallback to default
+        target_model = model_name or self.model_name
+        
+        # Create a specific LLM instance for this request
+        llm = ChatOllama(
+            model=target_model,
+            base_url=self.ollama_base_url,
+            temperature=temperature,
+        )
+
+        template = """Usa el siguiente contexto para responder a la pregunta del usuario.
+Si la respuesta no se encuentra en el contexto, di que no tienes esa información. No inventes nada.
+Mantén la respuesta concisa y profesional.
+
+Contexto:
 {context}
 
 Pregunta: {question}
-
-Si no encuentras la respuesta en el contexto, di "No tengo informacion suficiente en mi base de conocimiento para responder eso."
 Respuesta:"""
         
         prompt = ChatPromptTemplate.from_template(template)
@@ -148,7 +172,7 @@ Respuesta:"""
         chain = (
             {"context": self.retriever | format_docs, "question": RunnablePassthrough()}
             | prompt
-            | self.llm
+            | llm
             | StrOutputParser()
         )
         
