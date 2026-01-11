@@ -57,7 +57,28 @@ class RAGService:
         if ext == ".pdf":
             loader = PyPDFLoader(file_path)
         elif ext == ".md":
-            loader = UnstructuredMarkdownLoader(file_path)
+            try:
+                # Try to ensure resources are available if using Unstructured
+                import nltk
+                try:
+                    nltk.data.find('tokenizers/punkt_tab')
+                except LookupError:
+                    nltk.download('punkt_tab')
+                try:
+                    nltk.data.find('tokenizers/punkt')
+                except LookupError:
+                    nltk.download('punkt')
+                try:
+                    nltk.data.find('taggers/averaged_perceptron_tagger')
+                except LookupError:
+                    nltk.download('averaged_perceptron_tagger')
+
+                loader = UnstructuredMarkdownLoader(file_path)
+                documents = loader.load()
+            except Exception as e:
+                print(f"Warning: UnstructuredMarkdownLoader failed: {e}. Falling back to TextLoader.")
+                loader = TextLoader(file_path, encoding="utf-8", autodetect_encoding=True)
+                documents = loader.load()
         elif ext == ".txt":
             loader = TextLoader(file_path, encoding="utf-8")
         else:

@@ -16,7 +16,8 @@ COPY requirements.txt .
 # Instalar dependencias Python
 # --no-cache-dir reduce tamaño de imagen
 # --timeout aumenta tiempo de espera (útil en RPI con conexión lenta)
-RUN pip install --no-cache-dir --timeout=300 -r requirements.txt
+RUN pip install --no-cache-dir --timeout=300 -r requirements.txt && \
+    python -m nltk.downloader punkt punkt_tab averaged_perceptron_tagger
 
 # Copiar codigo de la aplicacion
 COPY app/ .
