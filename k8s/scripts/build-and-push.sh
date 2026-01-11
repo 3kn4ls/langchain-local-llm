@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script para construir la imagen de LangChain API para ARM64 y cargarla en k3s
+# Script para construir imagenes VERSIONADAS y actualizar Kustomization
 
 set -e
 
@@ -15,7 +15,7 @@ print_error() { echo -e "${RED}✗ $1${NC}"; }
 print_info() { echo -e "${NC}ℹ $1${NC}"; }
 
 echo "======================================================"
-echo "   Build de imagen para k3s (ARM64)"
+echo "   Build & Push VERSIONADO (k3s ARM64)"
 echo "======================================================"
 echo ""
 
@@ -29,83 +29,79 @@ fi
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
-IMAGE_NAME="langchain-app"
-IMAGE_TAG="latest"
-FULL_IMAGE="$IMAGE_NAME:$IMAGE_TAG"
+# Generar versión basada en fecha
+VERSION="v$(date +%Y%m%d-%H%M%S)"
+print_info "Versión generada: $VERSION"
 
-print_info "Directorio del proyecto: $PROJECT_ROOT"
-print_info "Construyendo imagen: $FULL_IMAGE"
-echo ""
+BACKEND_IMAGE="langchain-app"
+FRONTEND_IMAGE="langchain-frontend"
 
-# Construir imagen para ARM64 (Backend)
-print_info "1/4 Construyendo imagen Backend (linux/arm64)..."
+# Construir Backend
+print_info "1/5 Construyendo Backend ($VERSION)..."
 docker build \
   --platform linux/arm64 \
-  -t "$FULL_IMAGE" \
+  -t "$BACKEND_IMAGE:$VERSION" \
+  -t "$BACKEND_IMAGE:latest" \
   -f Dockerfile \
-  . || {
-  print_error "Error al construir la imagen Backend"
-  exit 1
-}
-print_success "Imagen Backend construida: $FULL_IMAGE"
+  . || { print_error "Fallo build backend"; exit 1; }
+print_success "Backend construido"
 
-# Construir imagen Frontend
-FRONTEND_IMAGE="langchain-frontend:latest"
-print_info "2/4 Construyendo imagen Frontend (linux/arm64)..."
+# Construir Frontend
+print_info "2/5 Construyendo Frontend ($VERSION)..."
 docker build \
   --platform linux/arm64 \
-  -t "$FRONTEND_IMAGE" \
+  -t "$FRONTEND_IMAGE:$VERSION" \
+  -t "$FRONTEND_IMAGE:latest" \
   -f frontend/Dockerfile \
-  frontend/ || {
-  print_error "Error al construir la imagen Frontend"
-  exit 1
-}
-print_success "Imagen Frontend construida: $FRONTEND_IMAGE"
+  frontend/ || { print_error "Fallo build frontend"; exit 1; }
+print_success "Frontend construido"
 
-# Importar imagenes a k3s
-print_info "3/4 Importando imagenes a k3s..."
-
-# Función para importar
+# Importar a k3s
+print_info "3/5 Importando imagenes a k3s..."
 import_image() {
   local img=$1
   if command -v k3s &> /dev/null; then
-    docker save "$img" | sudo k3s ctr images import - || {
-      print_warning "Fallo pipe k3s ctr, usando archivo temporal..."
-      TMP_TAR="/tmp/img_$(date +%s).tar"
-      docker save "$img" -o "$TMP_TAR"
-      sudo ctr -n k8s.io images import "$TMP_TAR"
-      rm "$TMP_TAR"
-    }
+    docker save "$img" | sudo k3s ctr images import -
   else
-    TMP_TAR="/tmp/img_$(date +%s).tar"
+    # Fallback si no hay pipe directo (raro) o sudo requiere pass
+    TMP_TAR="/tmp/img_$(date +%s)_$RANDOM.tar"
     docker save "$img" -o "$TMP_TAR"
     sudo ctr -n k8s.io images import "$TMP_TAR"
     rm "$TMP_TAR"
   fi
 }
 
-print_info "Importando $FULL_IMAGE..."
-import_image "$FULL_IMAGE"
+print_info "Importando $BACKEND_IMAGE:$VERSION..."
+import_image "$BACKEND_IMAGE:$VERSION"
 
-print_info "Importando $FRONTEND_IMAGE..."
-import_image "$FRONTEND_IMAGE"
+print_info "Importando $FRONTEND_IMAGE:$VERSION..."
+import_image "$FRONTEND_IMAGE:$VERSION"
 
-print_success "Imágenes importadas a k3s"
+print_success "Imagenes importadas a k3s"
 
-# Verificar
-echo ""
-print_info "4/4 Verificando imagenes en k3s..."
-sudo ctr -n k8s.io images ls | grep "$IMAGE_NAME"
-sudo ctr -n k8s.io images ls | grep "langchain-frontend" || {
-  print_warning "No se pudieron verificar todas las imágenes (puede ser solo un error de grep si usas namespaces distintos)"
-}
+# Actualizar Kustomization
+print_info "4/5 Actualizando k8s/base/kustomization.yaml..."
+KUSTOMIZATION_FILE="k8s/base/kustomization.yaml"
+
+# Usamos sed para actualizar el YAML
+# Buscamos 'name: langchain-app' y en la siguiente linea reemplazamos 'newTag: ...'
+sed -i "/name: langchain-app/{n;s/newTag: .*/newTag: $VERSION/}" "$KUSTOMIZATION_FILE"
+sed -i "/name: langchain-frontend/{n;s/newTag: .*/newTag: $VERSION/}" "$KUSTOMIZATION_FILE"
+
+# Verificar si cambió (opcional, grep)
+if grep -q "$VERSION" "$KUSTOMIZATION_FILE"; then
+    print_success "kustomization.yaml actualizado con $VERSION"
+else
+    print_error "No se pudo actualizar kustomization.yaml (verifica el formato del archivo)"
+    exit 1
+fi
 
 echo ""
 echo "======================================================"
-print_success "¡Imágenes listas para usar en k3s!"
+print_success "¡Build completo: $VERSION!"
 echo "======================================================"
 echo ""
-print_info "Para desplegar, ejecuta:"
-echo "  cd k8s/scripts"
-echo "  ./deploy.sh"
+print_info "Siguientes pasos:"
+echo "  1. (Opcional) git commit -am 'Bump version to $VERSION'"
+echo "  2. cd k8s/scripts && ./deploy.sh"
 echo ""

@@ -216,7 +216,6 @@ async def chat_stream(request: ChatRequest):
 
     async def generate():
         try:
-        try:
             if request.use_knowledge_base:
                 # RAG Flow
                 last_message = request.messages[-1]

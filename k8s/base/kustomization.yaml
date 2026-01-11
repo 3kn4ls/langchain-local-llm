@@ -11,6 +11,7 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - pvc.yaml
+  - chroma-pvc.yaml
   - ollama-statefulset.yaml
   - services.yaml
   - langchain-api-deployment.yaml
@@ -33,9 +34,9 @@ commonAnnotations:
 # Configuración de imágenes
 images:
   - name: langchain-app
-    newTag: latest
+    newTag: v20260111-151452
   - name: langchain-frontend
-    newTag: latest
+    newTag: v20260111-151452
   - name: ollama/ollama
     newTag: latest
 
