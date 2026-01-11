@@ -60,7 +60,7 @@ class ChatRequest(BaseModel):
 
 # ... (Existing endpoints) ...
 
-@app.get("/models")
+@app.get("/models/v2")
 async def get_models():
     """Obtener lista de modelos disponibles en Ollama."""
     try:
