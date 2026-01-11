@@ -70,15 +70,22 @@ async def get_models():
             response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
             if response.status_code == 200:
                 data = response.json()
-                # Extraer solo los nombres de los modelos
-                models = [model["name"] for model in data.get("models", [])]
+                # Extraer información completa de los modelos
+                models = [
+                    {
+                        "name": model.get("name", ""),
+                        "size": model.get("size"),
+                        "modified_at": model.get("modified_at")
+                    }
+                    for model in data.get("models", [])
+                ]
                 return {"models": models}
             else:
                 raise HTTPException(status_code=response.status_code, detail="Error fetching models from Ollama")
     except Exception as e:
          # Fallback si falla la conexión
         print(f"Error fetching models: {e}")
-        return {"models": [MODEL_NAME]}
+        return {"models": [{"name": MODEL_NAME}]}
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
