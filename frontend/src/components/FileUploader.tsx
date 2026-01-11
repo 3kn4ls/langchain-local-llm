@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { api } from '../utils/api';
 
 export const FileUploader: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
@@ -17,20 +18,8 @@ export const FileUploader: React.FC = () => {
         setIsUploading(true);
         setUploadStatus(`Uploading ${file.name}...`);
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
-            const response = await fetch('/api/ingest', {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                throw new Error('Upload failed');
-            }
-
-            const data = await response.json();
+            const data = await api.ingest(file);
             setUploadStatus(`Success! Added ${data.chunks_added} chunks from ${data.filename}`);
 
             // Clear after 3 seconds
