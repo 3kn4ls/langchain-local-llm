@@ -9,6 +9,8 @@ export const api = {
       throw new Error('Failed to fetch models');
     }
     const data = await response.json();
+    console.log('DEBUG - API Response:', data);
+    console.log('DEBUG - Models array:', data.models);
     return data.models || [];
   },
 

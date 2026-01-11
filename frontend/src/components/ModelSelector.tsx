@@ -20,7 +20,20 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
     setLoading(true);
     try {
       const modelList = await api.getModels();
-      setModels(modelList);
+      console.log('DEBUG - ModelSelector received models:', modelList);
+      console.log('DEBUG - Number of models:', modelList.length);
+      console.log('DEBUG - First model:', modelList[0]);
+
+      // Filtrar modelos con nombres vacíos o inválidos
+      const validModels = modelList.filter(model => model.name && model.name.trim());
+      console.log('DEBUG - Valid models after filter:', validModels);
+
+      if (validModels.length > 0) {
+        setModels(validModels);
+      } else {
+        console.warn('No valid models found, using fallback');
+        setModels([{ name: 'gemma2:2b' }, { name: 'llama3.2' }, { name: 'mistral' }, { name: 'phi3:mini' }]);
+      }
     } catch (error) {
       console.error('Error loading models:', error);
       setModels([{ name: 'gemma2:2b' }, { name: 'llama3.2' }, { name: 'mistral' }, { name: 'phi3:mini' }]);
