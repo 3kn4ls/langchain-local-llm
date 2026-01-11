@@ -17,6 +17,8 @@ data:
   PORT: "8000"
   MAX_INPUT_LENGTH: "10000"
   PYTHONUNBUFFERED: "1"
+  ANONYMIZED_TELEMETRY: "False"
+  CHROMA_SERVER_NO_INTERACTIVE_AUTH: "true"
 
   # Modelos permitidos (separados por coma)
   ALLOWED_MODELS: "gemma2:2b,phi3:mini,llama3.2:3b,tinyllama"
