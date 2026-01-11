@@ -60,6 +60,20 @@ class ChatRequest(BaseModel):
 
 # ... (Existing endpoints) ...
 
+@app.get("/models/raw")
+async def get_models_raw():
+    """Endpoint de debug: retorna la respuesta raw de Ollama sin procesar."""
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {"error": f"Ollama returned status {response.status_code}"}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/models")
 async def get_models():
     """Obtener lista de modelos disponibles en Ollama."""
@@ -72,18 +86,32 @@ async def get_models():
                 data = response.json()
                 print(f"DEBUG - Raw Ollama response: {data}")
 
-                # Extraer información completa de los modelos
-                models = [
-                    {
-                        "name": model.get("name", ""),
-                        "size": model.get("size"),
-                        "modified_at": model.get("modified_at")
-                    }
-                    for model in data.get("models", [])
-                ]
+                # Extraer información completa de los modelos con validación robusta
+                models = []
+                for model in data.get("models", []):
+                    # Intentar obtener el nombre desde múltiples campos posibles
+                    model_name = model.get("name") or model.get("model") or ""
+
+                    print(f"DEBUG - Processing model: {model}")
+                    print(f"DEBUG - Extracted name: '{model_name}'")
+
+                    # Solo agregar modelos con nombre válido
+                    if model_name and model_name.strip():
+                        models.append({
+                            "name": model_name.strip(),
+                            "size": model.get("size"),
+                            "modified_at": model.get("modified_at")
+                        })
+                    else:
+                        print(f"WARNING - Skipping model with empty name: {model}")
 
                 print(f"DEBUG - Processed models: {models}")
                 print(f"DEBUG - Number of models: {len(models)}")
+
+                # Si no hay modelos válidos, usar fallback
+                if not models:
+                    print("WARNING - No valid models found, using fallback")
+                    models = [{"name": MODEL_NAME}]
 
                 return {"models": models}
             else:
