@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ModelInfo, ChatSettings } from '../types';
-// import { api } from '../utils/api';
+import { api } from '../utils/api';
 
 interface ModelSelectorProps {
   settings: ChatSettings;
