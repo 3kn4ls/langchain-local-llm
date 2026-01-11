@@ -19,10 +19,11 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
 
   # Servicio LangChain App (Backend FastAPI)
   langchain-api:
@@ -38,6 +39,9 @@ services:
       - PORT=8000
       - MAX_INPUT_LENGTH=10000
       - PYTHONUNBUFFERED=1
+      - EMBEDDING_MODEL=nomic-embed-text
+
+
     command: python api_server.py
     volumes:
       # Montar codigo fuente para desarrollo
@@ -47,12 +51,28 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Setup Service (Pull data models automatically)
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ollama-puller
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: -c "echo 'Esperando a Ollama...'; sleep 5; echo 'Descargando modelo nomic-embed-text...'; ollama pull nomic-embed-text; echo 'Descargando modelo llama3.2...'; ollama pull llama3.2; echo 'Modelos listos!'"
 
   # Servicio Web Frontend (React + Vite + Nginx)
   web:
