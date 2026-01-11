@@ -12,11 +12,11 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(false);
 
-  /*useEffect(() => {
+  useEffect(() => {
     loadModels();
-  }, []);*/
+  }, []);
 
-  /*const loadModels = async () => {
+  const loadModels = async () => {
     setLoading(true);
     try {
       const modelList = await api.getModels();
@@ -27,9 +27,7 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
     } finally {
       setLoading(false);
     }
-  };*/
-  setLoading(false);
-  setModels([{ name: 'gemma2:2b' }, { name: 'llama3.2' }, { name: 'mistral' }, { name: 'phi3:mini' }]);
+  };
 
   const handleModelChange = (model: string) => {
     onSettingsChange({ ...settings, model });
