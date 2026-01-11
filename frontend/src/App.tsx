@@ -12,6 +12,7 @@ function App() {
   const [currentView, setCurrentView] = useState<'chat' | 'knowledge'>('chat');
   const [settings, setSettings] = useState<ChatSettings>(() => storage.getSettings());
   const [showSidebar, setShowSidebar] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   const {
     messages,
@@ -23,6 +24,20 @@ function App() {
     clearMessages,
     setMessages,
   } = useChat(settings);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768; // md breakpoint
+      setIsMobile(mobile);
+      if (mobile) setShowSidebar(false); // Default closed on mobile
+      else setShowSidebar(true); // Default open on desktop
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const savedConversations = storage.getConversations();
@@ -81,6 +96,7 @@ function App() {
     storage.saveConversations(updatedConversations);
     setCurrentConversationId(newConversation.id);
     clearMessages();
+    if (isMobile) setShowSidebar(false);
   };
 
   const handleSelectConversation = (id: string) => {
@@ -93,6 +109,7 @@ function App() {
       setCurrentConversationId(id);
       setMessages(conversation.messages);
     }
+    if (isMobile) setShowSidebar(false);
   };
 
   const handleDeleteConversation = (id: string) => {
@@ -120,10 +137,27 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gemini-bg text-gemini-text-primary overflow-hidden">
-      {/* Sidebar - Conditional Render */}
+    <div className="flex h-screen bg-gemini-bg text-gemini-text-primary overflow-hidden relative">
+      {/* Mobile Backdrop */}
+      {isMobile && showSidebar && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 backdrop-blur-sm transition-opacity animate-fade-in"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
 
-      <div className={`${showSidebar ? 'w-[280px]' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0 relative`}>
+      {/* Sidebar - Responsive Logic */}
+      <div className={`
+        transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0 z-40
+        ${isMobile
+          ? 'fixed inset-y-0 left-0 h-full w-[280px] shadow-2xl'
+          : 'relative h-full'
+        }
+        ${showSidebar
+          ? (isMobile ? 'translate-x-0' : 'w-[280px]')
+          : (isMobile ? '-translate-x-full' : 'w-0')
+        }
+      `}>
         <ConversationList
           conversations={conversations}
           currentConversationId={currentConversationId}
@@ -135,11 +169,12 @@ function App() {
         />
       </div>
 
-      <div className="flex-1 flex flex-col relative w-full h-full max-w-full">
-        {/* Toggle Button - Floating top left if sidebar closed, or inside layout */}
+      <div className="flex-1 flex flex-col relative w-full h-full max-w-full min-w-0">
+        {/* Toggle Button */}
         <button
           onClick={() => setShowSidebar(!showSidebar)}
-          className={`absolute top-4 ${showSidebar ? 'left-4 opacity-0 pointer-events-none' : 'left-4 opacity-100'} z-20 
+          className={`absolute top-4 left-4 z-20 
+            ${showSidebar && !isMobile ? 'opacity-0 pointer-events-none' : 'opacity-100'}
             p-2 text-gemini-text-secondary hover:text-gemini-text-primary hover:bg-gemini-hover rounded-full transition-all`}
           aria-label="Toggle sidebar"
         >
@@ -161,15 +196,13 @@ function App() {
             onSettingsChange={setSettings}
           />
         ) : (
-          <div className="flex-1 bg-gemini-bg p-6 overflow-auto">
+          <div className="flex-1 bg-gemini-bg overflow-hidden relative">
             <KnowledgeBaseView />
           </div>
         )}
       </div>
     </div>
   );
-
-
 }
 
 export default App;

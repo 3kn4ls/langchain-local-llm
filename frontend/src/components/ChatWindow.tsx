@@ -30,7 +30,7 @@ export const ChatWindow = ({
     <div className="flex flex-col h-full bg-gemini-bg relative">
       {/* Header - Transparent & Blurred */}
       <header className="absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between bg-gemini-bg/80 backdrop-blur-md border-b border-transparent transition-all">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pl-12 md:pl-0 transition-all">
           <span className="text-gemini-text-primary font-medium text-lg tracking-tight">LangChain Local</span>
           <ModelSelector settings={settings} onSettingsChange={onSettingsChange} />
         </div>

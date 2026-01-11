@@ -102,6 +102,17 @@ export const ModelSelector = ({ settings, onSettingsChange }: ModelSelectorProps
                 />
               </div>
             </div>
+
+            <div className="px-2 mt-3 mb-2">
+              <label className="text-[10px] uppercase font-bold text-gemini-text-secondary block mb-1.5 tracking-wider">System Prompt</label>
+              <textarea
+                value={settings.system_prompt || ''}
+                onChange={(e) => onSettingsChange({ ...settings, system_prompt: e.target.value })}
+                className="w-full bg-gemini-bg/50 border border-gemini-border rounded-lg p-2 text-xs text-gemini-text-primary focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 focus:outline-none resize-none placeholder-white/10"
+                rows={3}
+                placeholder="You are a helpful AI assistant..."
+              />
+            </div>
             <div className="flex items-center gap-2 mt-2 px-2 cursor-pointer hover:bg-gemini-hover rounded p-1"
               onClick={() => onSettingsChange({ ...settings, use_knowledge_base: !settings.use_knowledge_base })}>
               <div className={`w-4 h-4 border rounded flex items-center justify-center ${settings.use_knowledge_base ? 'bg-purple-500 border-purple-500' : 'border-gray-500'}`}>
