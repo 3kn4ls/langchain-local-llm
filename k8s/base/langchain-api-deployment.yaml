@@ -85,6 +85,28 @@ spec:
               name: langchain-config
               key: CHROMA_SERVER_NO_INTERACTIVE_AUTH
 
+        # MongoDB MCP Configuration
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MONGODB_URI
+        - name: MONGODB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MONGODB_DATABASE
+        - name: MONGODB_TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              name: langchain-config
+              key: MONGODB_TIMEOUT
+        - name: MONGODB_MAX_POOL_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: langchain-config
+              key: MONGODB_MAX_POOL_SIZE
+
         resources:
           limits:
             memory: "2048Mi"  # Aumentado a 2GB por crashes en RAG

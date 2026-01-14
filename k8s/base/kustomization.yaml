@@ -10,6 +10,7 @@ namespace: llm-services
 resources:
   - namespace.yaml
   - configmap.yaml
+  - mongodb-secret.yaml
   - pvc.yaml
   - chroma-pvc.yaml
   - ollama-statefulset.yaml
