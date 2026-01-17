@@ -12,6 +12,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.tools import tool
 from rag_service import RAGService
 import nltk
+import config
 
 # Import MongoDB MCP
 try:
@@ -32,11 +33,13 @@ try:
 except LookupError:
     nltk.download('punkt')
 
-# Load environment variables
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-MODEL_NAME = os.getenv("MODEL_NAME", "llama3.2")
-PORT = int(os.getenv("PORT", 8000))
-MAX_INPUT_LENGTH = int(os.getenv("MAX_INPUT_LENGTH", 4096))
+# Load settings from config
+OLLAMA_BASE_URL = config.OLLAMA_BASE_URL
+MODEL_NAME = config.DEFAULT_MODEL
+PORT = config.PORT
+MAX_INPUT_LENGTH = config.MAX_INPUT_LENGTH
+EMBEDDING_MODEL = config.DEFAULT_EMBEDDING_MODEL
+UPLOAD_DIR = config.UPLOAD_DIR
 
 # Initialize FastAPI
 app = FastAPI(title="LangChain Local LLM API")
@@ -66,7 +69,8 @@ async def root():
 # Inicializar RAG Service
 rag_service = RAGService(
     ollama_base_url=OLLAMA_BASE_URL,
-    model_name=MODEL_NAME
+    model_name=MODEL_NAME,
+    embedding_model=EMBEDDING_MODEL
 )
 
 # Inicializar MongoDB MCP

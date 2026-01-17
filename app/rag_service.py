@@ -9,15 +9,16 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.documents import Document
+import config
 
 class RAGService:
     """Service to handle RAG operations: ingestion, retrieval, and generation."""
 
     def __init__(self, 
-                 ollama_base_url: str = "http://localhost:11434",
-                 model_name: str = "llama3.2",
-                 embedding_model: str = "qwen3-embedding:8b", # "nomic-embed-text",
-                 persist_dir: str = "./chroma_db"):
+                 ollama_base_url: str = config.OLLAMA_BASE_URL,
+                 model_name: str = config.DEFAULT_MODEL,
+                 embedding_model: str = config.DEFAULT_EMBEDDING_MODEL,
+                 persist_dir: str = config.CHROMA_PERSIST_DIR):
         
         self.ollama_base_url = ollama_base_url
         self.model_name = model_name
