@@ -25,7 +25,7 @@ services:
           memory: 2G
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: [ "CMD", "curl", "-f", "http://localhost:11434/api/tags" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -48,7 +48,8 @@ services:
       # Modelo ligero para Raspberry Pi
       - MODEL_NAME=gemma2:2b
       - EMBEDDING_MODEL=nomic-embed-text
-    command: tail -f /dev/null  # Mantener contenedor vivo para ejecución manual
+      - API_KEY=local-dev-key
+    command: tail -f /dev/null # Mantener contenedor vivo para ejecución manual
     volumes:
       # Montar codigo fuente para desarrollo
       - ./app:/app

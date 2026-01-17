@@ -4,7 +4,8 @@ import asyncio
 import json
 from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Security, APIRouter
+from fastapi.security import APIKeyHeader
 from fastapi.responses import StreamingResponse
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
@@ -40,9 +41,28 @@ PORT = config.PORT
 MAX_INPUT_LENGTH = config.MAX_INPUT_LENGTH
 EMBEDDING_MODEL = config.DEFAULT_EMBEDDING_MODEL
 UPLOAD_DIR = config.UPLOAD_DIR
+API_KEY = config.API_KEY
+API_KEY_NAME = "X-API-KEY"
+
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if not API_KEY:
+        # If no API_KEY is configured, we allow access (or could enforce a default)
+        return
+    if api_key != API_KEY:
+        raise HTTPException(
+            status_code=403,
+            detail="Could not validate credentials",
+        )
 
 # Initialize FastAPI
-app = FastAPI(title="LangChain Local LLM API")
+app = FastAPI(
+    title="LangChain Local LLM API"
+)
+
+# Router for protected endpoints
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 # Models
 class ChatMessage(BaseModel):
@@ -200,7 +220,7 @@ class ChatRequest(BaseModel):
 
 # ... (Existing endpoints) ...
 
-@app.get("/models/raw")
+@router.get("/models/raw")
 async def get_models_raw():
     """Endpoint de debug: retorna la respuesta raw de Ollama sin procesar."""
     try:
@@ -214,7 +234,7 @@ async def get_models_raw():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/models")
+@router.get("/models")
 async def get_models():
     """Obtener lista de modelos disponibles en Ollama."""
     try:
@@ -264,7 +284,7 @@ async def get_models():
         print(traceback.format_exc())
         return {"models": [{"name": MODEL_NAME}]}
 
-@app.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Endpoint de chat con soporte RAG opcional y MongoDB tools."""
     # Validar longitud
@@ -396,7 +416,7 @@ Ejemplos de uso:
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 
 
-@app.post("/ingest")
+@router.post("/ingest")
 async def ingest_document(file: UploadFile = File(...), embedding_model: Optional[str] = None):
     """Upload and ingest a document into the Knowledge Base."""
     try:
@@ -418,7 +438,7 @@ async def ingest_document(file: UploadFile = File(...), embedding_model: Optiona
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
-@app.get("/documents")
+@router.get("/documents")
 async def list_documents(embedding_model: Optional[str] = None):
     """List all unique documents in the vector store."""
     try:
@@ -427,7 +447,7 @@ async def list_documents(embedding_model: Optional[str] = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/documents/{filename}")
+@router.delete("/documents/{filename}")
 async def delete_document(filename: str, embedding_model: Optional[str] = None):
     """Delete a specific document from the vector store."""
     try:
@@ -439,7 +459,7 @@ async def delete_document(filename: str, embedding_model: Optional[str] = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/documents")
+@router.delete("/documents")
 async def clear_documents(embedding_model: Optional[str] = None):
     """Clear all documents from the vector store."""
     try:
@@ -449,7 +469,7 @@ async def clear_documents(embedding_model: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/chat/stream")
+@router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     """Endpoint de chat con streaming via texto plano."""
     # Validar longitud de mensajes
@@ -602,7 +622,7 @@ Ejemplos de uso:
     return StreamingResponse(generate(), media_type="text/plain")
 
 
-@app.post("/analyze")
+@router.post("/analyze")
 async def analyze_text(request: AnalysisRequest):
     """Analizar texto (resumen, sentimiento, keywords)."""
     tasks = {
@@ -644,7 +664,7 @@ Texto: {text}"""
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/debug/rag")
+@router.get("/debug/rag")
 async def debug_rag(query: str):
     """Endpoint de debug para verificar retrieval."""
     try:
@@ -657,7 +677,7 @@ async def debug_rag(query: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/mongodb/status")
+@router.get("/mongodb/status")
 async def mongodb_status():
     """Obtener estado de la conexión MongoDB."""
     if not MONGODB_MCP_AVAILABLE:
@@ -681,7 +701,7 @@ async def mongodb_status():
             "error": str(e)
         }
 
-@app.get("/mongodb/collections")
+@router.get("/mongodb/collections")
 async def mongodb_collections_info():
     """Obtener información detallada de las colecciones."""
     if not MONGODB_MCP_AVAILABLE or not mongodb_server:
@@ -732,6 +752,8 @@ async def mongodb_collections_info():
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+app.include_router(router)
 
 # =============================================================================
 # Main

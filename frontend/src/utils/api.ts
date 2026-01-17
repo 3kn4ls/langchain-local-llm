@@ -1,25 +1,36 @@
 import { ChatRequest, ChatResponse, ModelInfo } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'api';
+const API_KEY = import.meta.env.VITE_API_KEY || '';
+
+const getHeaders = (extraHeaders: Record<string, string> = {}) => {
+  const headers: Record<string, string> = {
+    ...extraHeaders,
+  };
+  if (API_KEY) {
+    headers['X-API-KEY'] = API_KEY;
+  }
+  return headers;
+};
 
 export const api = {
   async getModels(): Promise<ModelInfo[]> {
-    const response = await fetch(`${API_BASE_URL}/models`);
+    const response = await fetch(`${API_BASE_URL}/models`, {
+      headers: getHeaders(),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch models');
     }
     const data = await response.json();
-    console.log('DEBUG - API Response:', data);
-    console.log('DEBUG - Models array:', data.models);
     return data.models || [];
   },
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
-      headers: {
+      headers: getHeaders({
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify(request),
     });
 
@@ -33,9 +44,9 @@ export const api = {
   async *chatStream(request: ChatRequest): AsyncGenerator<string, void, unknown> {
     const response = await fetch(`${API_BASE_URL}/chat/stream`, {
       method: 'POST',
-      headers: {
+      headers: getHeaders({
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify(request),
     });
 
@@ -86,6 +97,7 @@ export const api = {
 
     const response = await fetch(`${API_BASE_URL}/ingest`, {
       method: 'POST',
+      headers: getHeaders(),
       body: formData,
     });
 
@@ -98,7 +110,9 @@ export const api = {
 
   async getDocuments(embeddingModel?: string): Promise<{ documents: string[] }> {
     const query = embeddingModel ? `?embedding_model=${embeddingModel}` : '';
-    const response = await fetch(`${API_BASE_URL}/documents${query}`);
+    const response = await fetch(`${API_BASE_URL}/documents${query}`, {
+      headers: getHeaders(),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch documents');
     }
@@ -109,6 +123,7 @@ export const api = {
     const query = embeddingModel ? `?embedding_model=${embeddingModel}` : '';
     const response = await fetch(`${API_BASE_URL}/documents/${filename}${query}`, {
       method: 'DELETE',
+      headers: getHeaders(),
     });
     if (!response.ok) {
       throw new Error('Failed to delete document');
@@ -120,6 +135,7 @@ export const api = {
     const query = embeddingModel ? `?embedding_model=${embeddingModel}` : '';
     const response = await fetch(`${API_BASE_URL}/documents${query}`, {
       method: 'DELETE',
+      headers: getHeaders(),
     });
     if (!response.ok) {
       throw new Error('Failed to clear documents');

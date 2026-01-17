@@ -2,8 +2,8 @@ import os
 
 # Ollama Settings
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("MODEL_NAME", "llama3.2")
-DEFAULT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
+DEFAULT_MODEL = os.getenv("MODEL_NAME", "qwen3:14b")
+DEFAULT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "qwen3-embedding:8b")
 
 # API Server Settings
 PORT = int(os.getenv("PORT", 8000))
@@ -21,3 +21,6 @@ MONGODB_MAX_POOL_SIZE = int(os.getenv("MONGODB_MAX_POOL_SIZE", 10))
 
 # Logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# Security
+API_KEY = os.getenv("API_KEY", "")
