@@ -190,6 +190,7 @@ class ChatRequest(BaseModel):
     max_tokens: Optional[int] = Field(default=2048, ge=1, le=4096, description="Max tokens")
     system_prompt: Optional[str] = Field(default="Eres un asistente útil.", description="System prompt")
     use_knowledge_base: Optional[bool] = Field(default=False, description="Use RAG context")
+    embedding_model: Optional[str] = Field(default=None, description="Embedding model for RAG")
     use_mongodb_tools: Optional[bool] = Field(default=False, description="Enable MongoDB database tools")
 
 
@@ -277,7 +278,8 @@ async def chat(request: ChatRequest):
             response_text = await rag_service.ask(
                 question=last_message.content,
                 model_name=request.model,
-                temperature=request.temperature
+                temperature=request.temperature,
+                embedding_model=request.embedding_model
             )
             return ChatResponse(response=response_text, model=request.model)
 
@@ -391,14 +393,14 @@ Ejemplos de uso:
 
 
 @app.post("/ingest")
-async def ingest_document(file: UploadFile = File(...)):
+async def ingest_document(file: UploadFile = File(...), embedding_model: Optional[str] = None):
     """Upload and ingest a document into the Knowledge Base."""
     try:
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        num_chunks = rag_service.ingest_file(file_path)
+        num_chunks = rag_service.ingest_file(file_path, embedding_model=embedding_model)
         
         return {
             "filename": file.filename,
@@ -412,6 +414,35 @@ async def ingest_document(file: UploadFile = File(...)):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
+@app.get("/documents")
+async def list_documents(embedding_model: Optional[str] = None):
+    """List all unique documents in the vector store."""
+    try:
+        docs = rag_service.list_documents(embedding_model=embedding_model)
+        return {"documents": docs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/documents/{filename}")
+async def delete_document(filename: str, embedding_model: Optional[str] = None):
+    """Delete a specific document from the vector store."""
+    try:
+        success = rag_service.delete_document(filename, embedding_model=embedding_model)
+        if success:
+            return {"status": "success", "message": f"Document {filename} deleted"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Document {filename} not found or could not be deleted")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/documents")
+async def clear_documents(embedding_model: Optional[str] = None):
+    """Clear all documents from the vector store."""
+    try:
+        rag_service.clear_database(embedding_model=embedding_model)
+        return {"status": "success", "message": "Vector database cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/chat/stream")
@@ -435,7 +466,8 @@ async def chat_stream(request: ChatRequest):
                 async for chunk in rag_service.ask_stream(
                     question=last_message.content,
                     model_name=request.model,
-                    temperature=request.temperature
+                    temperature=request.temperature,
+                    embedding_model=request.embedding_model
                 ):
                     yield chunk
             

@@ -77,9 +77,12 @@ export const api = {
     }
   },
 
-  async ingest(file: File): Promise<any> {
+  async ingest(file: File, embeddingModel?: string): Promise<any> {
     const formData = new FormData();
     formData.append('file', file);
+    if (embeddingModel) {
+      formData.append('embedding_model', embeddingModel);
+    }
 
     const response = await fetch(`${API_BASE_URL}/ingest`, {
       method: 'POST',
@@ -90,6 +93,37 @@ export const api = {
       throw new Error('Upload failed');
     }
 
+    return response.json();
+  },
+
+  async getDocuments(embeddingModel?: string): Promise<{ documents: string[] }> {
+    const query = embeddingModel ? `?embedding_model=${embeddingModel}` : '';
+    const response = await fetch(`${API_BASE_URL}/documents${query}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch documents');
+    }
+    return response.json();
+  },
+
+  async deleteDocument(filename: string, embeddingModel?: string): Promise<any> {
+    const query = embeddingModel ? `?embedding_model=${embeddingModel}` : '';
+    const response = await fetch(`${API_BASE_URL}/documents/${filename}${query}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete document');
+    }
+    return response.json();
+  },
+
+  async clearDocuments(embeddingModel?: string): Promise<any> {
+    const query = embeddingModel ? `?embedding_model=${embeddingModel}` : '';
+    const response = await fetch(`${API_BASE_URL}/documents${query}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to clear documents');
+    }
     return response.json();
   },
 };

@@ -197,7 +197,10 @@ function App() {
           />
         ) : (
           <div className="flex-1 bg-gemini-bg overflow-hidden relative">
-            <KnowledgeBaseView />
+            <KnowledgeBaseView
+              settings={settings}
+              onSettingsChange={setSettings}
+            />
           </div>
         )}
       </div>

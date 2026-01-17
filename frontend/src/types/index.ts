@@ -20,6 +20,7 @@ export interface ChatRequest {
   max_tokens?: number;
   system_prompt?: string;
   use_knowledge_base?: boolean;
+  embedding_model?: string;
   use_mongodb_tools?: boolean;
 }
 
@@ -40,5 +41,6 @@ export interface ChatSettings {
   max_tokens: number;
   system_prompt: string;
   use_knowledge_base: boolean;
+  embedding_model: string;
   use_mongodb_tools: boolean;
 }

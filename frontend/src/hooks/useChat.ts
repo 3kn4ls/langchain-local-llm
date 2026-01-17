@@ -36,6 +36,7 @@ export const useChat = (settings: ChatSettings) => {
           max_tokens: settings.max_tokens,
           system_prompt: settings.system_prompt,
           use_knowledge_base: settings.use_knowledge_base,
+          embedding_model: settings.embedding_model,
           use_mongodb_tools: settings.use_mongodb_tools,
         });
 
@@ -59,6 +60,7 @@ export const useChat = (settings: ChatSettings) => {
           max_tokens: settings.max_tokens,
           system_prompt: settings.system_prompt,
           use_knowledge_base: settings.use_knowledge_base,
+          embedding_model: settings.embedding_model,
           use_mongodb_tools: settings.use_mongodb_tools,
         });
 

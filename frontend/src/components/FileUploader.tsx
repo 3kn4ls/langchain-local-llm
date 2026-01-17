@@ -1,7 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { api } from '../utils/api';
 
-export const FileUploader: React.FC = () => {
+interface FileUploaderProps {
+    embeddingModel?: string;
+    onUploadSuccess?: () => void;
+}
+
+export const FileUploader: React.FC<FileUploaderProps> = ({ embeddingModel, onUploadSuccess }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -19,8 +24,12 @@ export const FileUploader: React.FC = () => {
         setUploadStatus(`Uploading ${file.name}...`);
 
         try {
-            const data = await api.ingest(file);
+            const data = await api.ingest(file, embeddingModel);
             setUploadStatus(`Success! Added ${data.chunks_added} chunks from ${data.filename}`);
+
+            if (onUploadSuccess) {
+                onUploadSuccess();
+            }
 
             // Clear after 3 seconds
             setTimeout(() => setUploadStatus(''), 3000);
@@ -54,8 +63,8 @@ export const FileUploader: React.FC = () => {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isUploading
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
                         }`}
                 >
                     {isUploading ? 'Uploading...' : 'Upload Document'}

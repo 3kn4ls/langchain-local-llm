@@ -16,12 +16,13 @@ class RAGService:
     def __init__(self, 
                  ollama_base_url: str = "http://localhost:11434",
                  model_name: str = "llama3.2",
-                 embedding_model: str = "nomic-embed-text",
+                 embedding_model: str = "qwen3-embedding:8b", # "nomic-embed-text",
                  persist_dir: str = "./chroma_db"):
         
         self.ollama_base_url = ollama_base_url
         self.model_name = model_name
         self.persist_dir = persist_dir
+        self.embedding_model_name = None # Force initial setup in _update_embedding_model
         
         # Initialize LLM
         self.llm = ChatOllama(
@@ -30,25 +31,39 @@ class RAGService:
             temperature=0.3, # Low temperature for factual RAG
         )
 
-        # Initialize Embeddings
+        # Initialize embeddings, vectorstore, and retriever
+        self._update_embedding_model(embedding_model)
+
+    def _update_embedding_model(self, embedding_model: Optional[str]):
+        """Updates the embedding model if it's different from the current one."""
+        if not embedding_model or embedding_model == getattr(self, 'embedding_model_name', None):
+            return
+
+        print(f"Switching embedding model to: {embedding_model}")
+        self.embedding_model_name = embedding_model
         self.embeddings = OllamaEmbeddings(
             model=embedding_model,
-            base_url=ollama_base_url,
-        )
-
-        # Initialize Vector Store
-        self.vectorstore = Chroma(
-            persist_directory=persist_dir,
-            embedding_function=self.embeddings,
+            base_url=self.ollama_base_url,
         )
         
+        # Use a model-specific subdirectory to avoid dimension mismatch
+        model_persist_dir = os.path.join(self.persist_dir, embedding_model.replace(':', '_'))
+        
+        # Update vectorstore with new embedding function
+        self.vectorstore = Chroma(
+            persist_directory=model_persist_dir,
+            embedding_function=self.embeddings,
+        )
         self.retriever = self.vectorstore.as_retriever(
             search_type="similarity",
             search_kwargs={"k": 3}
         )
 
-    def ingest_file(self, file_path: str) -> int:
+    def ingest_file(self, file_path: str, embedding_model: Optional[str] = None) -> int:
         """Ingests a single file into the vector store."""
+        if embedding_model:
+            self._update_embedding_model(embedding_model)
+
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -115,20 +130,80 @@ class RAGService:
         
         return len(chunks)
 
-    def clear_database(self):
-        """Clears the vector database."""
-        # Simplest way is to remove the directory and re-init, 
-        # but Chroma client has reset/delete methods.
-        # For LangChain wrapper, we can delete the collection or specific IDs.
-        # Deleting the persist dir is the most nuclear "Reset" option.
-        if os.path.exists(self.persist_dir):
-            self.vectorstore.delete_collection()
-            # Re-init is handled by generic wrapper calls usually, 
-            # but modifying internal state might require re-instantiation.
-            # Safe approach: usage of delete_collection() clears data.
+    def clear_database(self, embedding_model: Optional[str] = None):
+        """Clears the vector database. If embedding_model is provided, clears only that model's data."""
+        if embedding_model:
+            self._update_embedding_model(embedding_model)
+            if os.path.exists(self.vectorstore._persist_directory):
+                import shutil
+                shutil.rmtree(self.vectorstore._persist_directory)
+                # Force re-init after deletion
+                self.embedding_model_name = None
+                self._update_embedding_model(embedding_model)
+        else:
+            # Clear everything
+            if os.path.exists(self.persist_dir):
+                import shutil
+                shutil.rmtree(self.persist_dir)
+                os.makedirs(self.persist_dir, exist_ok=True)
+                # Re-initialize current model
+                current_model = self.embedding_model_name
+                self.embedding_model_name = None
+                self._update_embedding_model(current_model)
 
-    async def ask(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3) -> str:
+    def list_documents(self, embedding_model: Optional[str] = None) -> List[str]:
+        """Returns a list of unique document sources in the vector store."""
+        try:
+            if embedding_model:
+                self._update_embedding_model(embedding_model)
+            
+            # Get all metadata from the collection
+            results = self.vectorstore.get()
+            if not results or 'metadatas' not in results:
+                return []
+            
+            # Extract unique 'source' values
+            sources = set()
+            for meta in results['metadatas']:
+                if meta and 'source' in meta:
+                    sources.add(os.path.basename(meta['source']))
+            
+            return sorted(list(sources))
+        except Exception as e:
+            print(f"Error listing documents: {e}")
+            return []
+
+    def delete_document(self, filename: str, embedding_model: Optional[str] = None) -> bool:
+        """Deletes all chunks associated with a specific filename."""
+        try:
+            if embedding_model:
+                self._update_embedding_model(embedding_model)
+
+            results = self.vectorstore.get()
+            if not results or 'metadatas' not in results:
+                return False
+            
+            ids_to_delete = []
+            for i, meta in enumerate(results['metadatas']):
+                if meta and 'source' in meta:
+                    if os.path.basename(meta['source']) == filename:
+                        ids_to_delete.append(results['ids'][i])
+            
+            if ids_to_delete:
+                self.vectorstore.delete(ids=ids_to_delete)
+                print(f"Deleted {len(ids_to_delete)} chunks from {filename}")
+                return True
+            
+            return False
+        except Exception as e:
+            print(f"Error deleting document {filename}: {e}")
+            return False
+
+    async def ask(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3, embedding_model: Optional[str] = None) -> str:
         """Asks a question using the RAG chain."""
+        if embedding_model:
+            self._update_embedding_model(embedding_model)
+
         # Use provided model or fallback to default
         target_model = model_name or self.model_name
         
@@ -163,8 +238,11 @@ Respuesta:"""
         
         return await chain.ainvoke(question)
 
-    async def ask_stream(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3):
+    async def ask_stream(self, question: str, model_name: Optional[str] = None, temperature: float = 0.3, embedding_model: Optional[str] = None):
         """Asks a question using the RAG chain and streams the response."""
+        if embedding_model:
+            self._update_embedding_model(embedding_model)
+
         # Use provided model or fallback to default
         target_model = model_name or self.model_name
         
